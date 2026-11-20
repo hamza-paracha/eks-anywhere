@@ -1210,6 +1210,51 @@ func TestProvider_ValidateNewSpec_NoChanges(t *testing.T) {
 	}
 }
 
+func TestProviderValidateNewSpecMachineConfigNamespace(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		namespace string
+		lookupErr error
+	}{
+		{name: "omitted namespace"},
+		{name: "explicit namespace", namespace: "test-namespace"},
+		{name: "lookup error", lookupErr: errors.New("machine config lookup failed")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest := "cluster_tinkerbell_stacked_etcd.yaml"
+			ctrl := gomock.NewController(t)
+			desired := givenClusterSpec(t, manifest)
+			desired.Cluster.Namespace = tc.namespace
+			current := desired.Cluster.DeepCopy()
+			if current.Namespace == "" {
+				current.Namespace = "default"
+			}
+			datacenter := givenDatacenterConfig(t, manifest)
+			machines := givenMachineConfigs(t, manifest)
+			kubectl := mocks.NewMockProviderKubectlClient(ctrl)
+			provider := newTinkerbellProvider(datacenter, machines, desired.Cluster,
+				filewritermocks.NewMockFileWriter(ctrl), stackmocks.NewMockDocker(ctrl),
+				stackmocks.NewMockHelm(ctrl), kubectl)
+			ctx := context.Background()
+			management := &types.Cluster{Name: "test", KubeconfigFile: "management.kubeconfig"}
+			kubectl.EXPECT().GetEksaCluster(ctx, management, desired.Cluster.Name).Return(current, nil)
+			kubectl.EXPECT().GetEksaTinkerbellDatacenterConfig(ctx, current.Spec.DatacenterRef.Name,
+				management.KubeconfigFile, current.Namespace).Return(datacenter, nil)
+			for _, machine := range machines {
+				call := kubectl.EXPECT().GetEksaTinkerbellMachineConfig(ctx, machine.Name,
+					management.KubeconfigFile, current.Namespace).Return(machine, tc.lookupErr)
+				if tc.lookupErr != nil {
+					call.MaxTimes(1)
+				}
+			}
+			err := provider.ValidateNewSpec(ctx, management, desired)
+			if !errors.Is(err, tc.lookupErr) {
+				t.Fatalf("ValidateNewSpec error = %v, want %v", err, tc.lookupErr)
+			}
+		})
+	}
+}
+
 func TestProvider_ValidateNewSpec_ChangeWorkerNodeGroupMachineRef(t *testing.T) {
 	clusterSpecManifest := "cluster_tinkerbell_stacked_etcd.yaml"
 	mockCtrl := gomock.NewController(t)

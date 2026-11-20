@@ -353,7 +353,7 @@ func (p *Provider) validateMachineCfgsImmutability(ctx context.Context, clstr *t
 			if _, has := currentMachineCfgRefsMap[machineCfg.Name]; !has {
 				return fmt.Errorf("cannot change machine config references")
 			}
-			err := p.validateMachineCfg(ctx, clstr, machineCfg, desiredClstrSpec)
+			err := p.validateMachineCfg(ctx, clstr, machineCfg, currentClstr.Namespace)
 			if err != nil {
 				return err
 			}
@@ -441,8 +441,8 @@ func WorkerNodeGroupWithK8sVersion(spec *cluster.Spec) map[string]v1alpha1.Kuber
 	return WNGwithK8sVersion
 }
 
-func (p *Provider) validateMachineCfg(ctx context.Context, cluster *types.Cluster, newConfig *v1alpha1.TinkerbellMachineConfig, clusterSpec *cluster.Spec) error {
-	prevMachineConfig, err := p.providerKubectlClient.GetEksaTinkerbellMachineConfig(ctx, newConfig.Name, cluster.KubeconfigFile, clusterSpec.Cluster.Namespace)
+func (p *Provider) validateMachineCfg(ctx context.Context, cluster *types.Cluster, newConfig *v1alpha1.TinkerbellMachineConfig, namespace string) error {
+	prevMachineConfig, err := p.providerKubectlClient.GetEksaTinkerbellMachineConfig(ctx, newConfig.Name, cluster.KubeconfigFile, namespace)
 	if err != nil {
 		return err
 	}
