@@ -90,6 +90,20 @@ region = snow`,
 			wantErr: "",
 		},
 		{
+			name:  "profile with trailing whitespace",
+			creds: "[1.2.3.4] \t\nregion = snow\n",
+			want:  []string{"1.2.3.4"},
+		},
+		{
+			name:  "profile with surrounding whitespace",
+			creds: "\t [1.2.3.4] \t\nregion = snow\n  [1.2.3.5]\n",
+			want:  []string{"1.2.3.4", "1.2.3.5"},
+		},
+		{
+			name:    "empty credentials",
+			wantErr: "no ip address profile found",
+		},
+		{
 			name: "no ip in profile",
 			creds: `[invalid profile]
 aws_access_key_id = ABCDEFGHIJKLMNOPQR2T

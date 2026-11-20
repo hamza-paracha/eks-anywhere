@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/aws/eks-anywhere/pkg/validations"
 )
@@ -83,7 +84,7 @@ func ParseDeviceIPs(r io.Reader) ([]string, error) {
 
 func subtractProfileName(input string) string {
 	re := regexp.MustCompile(`^\[((.*?))\]$`)
-	if match := re.FindStringSubmatch(input); match != nil {
+	if match := re.FindStringSubmatch(strings.TrimSpace(input)); match != nil {
 		return match[1]
 	}
 	return ""
